@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 /**
@@ -34,6 +35,8 @@ public class StreamingServer {
     private boolean isRunning;
     private Socket clientSocket;
     private CompletableFuture<Void> streamingFuture;
+
+    private double clientConnectionSpeedMbps = 2.0;
 
     /**
      * Constructor method
@@ -239,6 +242,11 @@ public class StreamingServer {
      */
     private void handleStreamRequest(NetworkMessage message, Socket socket, ObjectOutputStream outputStream) {
         String fileName = message.getPayloadAs(String.class);
+
+        // Detailed logging added
+        logger.info("=== STREAM REQUEST DEBUG START ===");
+        logger.info("Received stream request for file: {}", fileName);
+
         if (fileName == null) {
             logger.error("Invalid streaming request: No file name was provided");
             sendErrorMessage(outputStream, "No file name was provided");
@@ -247,55 +255,115 @@ public class StreamingServer {
 
         logger.info("Handling of the video streaming request: {}", fileName);
 
-        // Search for the video file
+        // Search for the video file and check if it exists
         VideoFile videoFile = videoManager.getVideoByFileName(fileName);
         if (videoFile == null) {
             logger.error("The video {} was not found", fileName);
+            logger.info("Available videos: {}",
+                    videoManager.loadAvailableVideos().stream()
+                            .map(VideoFile::getFileName)
+                            .collect(Collectors.toList()));
             sendErrorMessage(outputStream, "The video was not found: " + fileName);
             return;
         }
 
+        logger.info("Video file found successfully: {}", videoFile.getFileName());
+
+        // Check if transcoded versions already exist
+        if (!videoFile.getTranscodedVersionList().isEmpty()) {
+            logger.info("Transcoded versions already available, proceeding directly to streaming");
+            proceedWithStreaming(videoFile, outputStream);
+            return;
+        }
+
+        // If need to transcode, inform the client immediately and do it asynchronously
+        logger.info("Video needs transcoding, starting asynchronous preparation");
+
+        // Send immediate response to client saying "processing in progress"
         try {
-            // Prepare the video for streaming (Convert to different resolutions)
-            videoFile = videoManager.prepareVideoForStreaming(videoFile);
+            sendMessage(outputStream, new NetworkMessage(MessageType.SERVER_INFO,
+                    "Video is being prepared for streaming. This may take a few minutes..."));
+        } catch (Exception e) {
+            logger.error("Failed to send processing message to client: {}", e.getMessage());
+            return;
+        }
 
-            // To be adjusted
-            StreamConfig config = StreamConfig.SD_480P;
+        // Asynchronous transcoding.
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                logger.info("Starting asynchronous video preparation");
+                return videoManager.prepareVideoForStreaming(videoFile);
+            } catch (Exception e) {
+                logger.error("Error during video preparation: {}", e.getMessage());
+                throw new RuntimeException(e);
+            }
+        }).thenAccept(preparedVideo -> {
+            // Runs when transcoded is complete
+            logger.info("Video preparation completed successfully");
+            proceedWithStreaming(preparedVideo, outputStream);
+        }).exceptionally(throwable -> {
+            // Runs if transcoding fails
+            logger.error("Video preparation failed: {}", throwable.getMessage());
+            sendMessage(outputStream, new NetworkMessage(MessageType.STREAM_ERROR, "Failed to prepare video: " + throwable.getMessage()));
+            return null;
+        });
 
-            // Choose the correct video version
+        logger.info("Asynchronous transcoding initiated, keeping connection alive");
+    }
+
+    /**
+     * Helper method to handle the actual streaming once video is ready
+     * @param videoFile
+     * @param outputStream
+     */
+    private void proceedWithStreaming(VideoFile videoFile, ObjectOutputStream outputStream) {
+        try {
+            logger.info("Using client connection speed: {} Mbps", clientConnectionSpeedMbps);
+
+            // Select appropriate stream configuration
+            StreamConfig config = StreamConfig.getBestConfigurationForSpeed(clientConnectionSpeedMbps);
+            logger.info("Selected streaming configuration: {}", config);
+
+            // Find the best version for streaming
             VideoFile.TranscodedVersion version = videoFile.getBestVersionForSpeed(config.getBitrateMbps());
             if (version == null) {
-                logger.error("No matching file version was found for streaming");
-                sendErrorMessage(outputStream, "No matching file version was found for streaming");
+                logger.error("No suitable transcoded version found");
+                logger.error("Available transcoded versions: {}", videoFile.getTranscodedVersionList());
+                sendErrorMessage(outputStream, "No suitable version found for streaming");
                 return;
             }
 
-            // Terminate the previous stream, if it exists
+            logger.info("Selected transcoded version: {}", version);
+
+            // Stop any previous streaming
             if (streamingFuture != null && !streamingFuture.isDone()) {
-                ffmpegHandler.stopCurrentProcess();
+                logger.info("Stopping previous streaming session");
+                ffmpegHandler.stopCurrentProcess();;
                 streamingFuture.cancel(true);
             }
 
-            // Inform the client that the stream is ready
+            // Notify client that stream is ready
             sendMessage(outputStream, new NetworkMessage(MessageType.STREAM_READY, config));
+            logger.info("Starting FFMPEG streaming process");
 
-            // Initiate Streaming
+            // Start the actual streaming
             String videoPath = version.getTranscodedVideoPath();
             streamingFuture = ffmpegHandler.startStreaming(videoPath, config, line -> {
-                logger.debug("FFMPEG: {}", line);
+                logger.debug("FFMPEG output: {}", line);
             });
 
+            // Monitor streaming completion
             streamingFuture.whenComplete((result, error) -> {
                 if (error != null) {
-                    logger.error("Error during streaming: {}", error.getMessage());
-                    sendErrorMessage(outputStream, "Error during streaming: " + error.getMessage());
+                    logger.error("Streaming completed with error: {}", error.getMessage());
+                    sendErrorMessage(outputStream, "Streaming error: " + error.getMessage());
                 } else {
-                    logger.info("Streaming has finished successfully");
+                    logger.info("Streaming completed successfully");
                 }
             });
-        } catch (IOException e) {
-            logger.error("Error during the video preparation: {}", e.getMessage());
-            sendErrorMessage(outputStream, "Error during the video preparation: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Exception during streaming setup: {}", e.getMessage(), e);
+            sendErrorMessage(outputStream, "Server error during streaming setup: " + e.getMessage());
         }
     }
 
@@ -307,6 +375,7 @@ public class StreamingServer {
         Double speedMbps = message.getPayloadAs(Double.class);
         if (speedMbps != null) {
             logger.info("The client reported connection speed of {:.2f} Mbps", speedMbps);
+            this.clientConnectionSpeedMbps = speedMbps;
         } else {
             logger.warn("Invalid connection speed");
         }

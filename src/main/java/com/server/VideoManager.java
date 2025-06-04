@@ -1,6 +1,7 @@
 package com.server;
 
 
+import com.model.StreamConfig;
 import com.model.VideoFile;
 import com.util.FFMPEGHandler;
 import org.apache.logging.log4j.LogManager;
@@ -88,8 +89,12 @@ public class VideoManager {
                 // Check if a video is in the cache. If not, create it and add it to the cache.
                 if (!videoCache.containsKey(file.getName())) {
                     VideoFile videoFile = new VideoFile(file);
+
+                    loadExistingTranscodedVersions(videoFile);
+
                     videoCache.put(file.getName(), videoFile);
-                    logger.info("Added new video: {}", file.getName());
+                    logger.info("Added new video: {} (with {} transcoded versions)", file.getName(),
+                            videoFile.getTranscodedVersionList().size());
                 }
             }
 
@@ -111,6 +116,59 @@ public class VideoManager {
         } catch (IOException e) {
             logger.error("Error during the loading of the videos: {}", e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    private void loadExistingTranscodedVersions(VideoFile videoFile) {
+        String videoName = videoFile.getFileName().substring(0, videoFile.getFileName().lastIndexOf('.'));
+        Path transcodedDir = Paths.get("transcoded", videoName);
+
+        if (!Files.exists(transcodedDir)) {
+            logger.debug("No transcoded directory found for: {}", videoName);
+            return;
+        }
+
+        logger.info("Checking for existing transcoded versions in: {}", transcodedDir);
+
+        // Check for each possible resolution
+        List<StreamConfig> configs = List.of(
+                StreamConfig.HD_1080P,
+                StreamConfig.HD_720P,
+                StreamConfig.SD_480P,
+                StreamConfig.SD_360P,
+                StreamConfig.LOW_240P
+        );
+
+        for (StreamConfig config : configs) {
+            String expectedFileName = String.format("%s_%dp.mp4", videoName, config.getVideoHeight());
+            Path transcodedFilePath = transcodedDir.resolve(expectedFileName);
+
+            if (Files.exists(transcodedFilePath)) {
+                try {
+                    long fileSize = Files.size(transcodedFilePath);
+                    if (fileSize > 0) {
+                        logger.info("Found existing transcoded file: {} (size: {} bytes)", expectedFileName, fileSize);
+
+                        VideoFile.TranscodedVersion version = new VideoFile.TranscodedVersion(
+                                transcodedFilePath.toString(),
+                                "mp4",
+                                config.getVideoWidth(),
+                                config.getVideoHeight(),
+                                config.getBitrate()
+                        );
+                        videoFile.addTranscodedVersion(version);
+                    } else {
+                        logger.warn("Transcoded file exists but is empty: {}", expectedFileName);
+                    }
+                } catch (IOException e) {
+                    logger.error("Error checking transcoded file size: {}", e.getMessage());
+                }
+            }
+        }
+
+        if (!videoFile.getTranscodedVersionList().isEmpty()) {
+            logger.info("Loaded {} existing transcoded versions for: {}",
+                    videoFile.getTranscodedVersionList().size(), videoFile.getFileName());
         }
     }
 
@@ -155,18 +213,26 @@ public class VideoManager {
     public VideoFile prepareVideoForStreaming(VideoFile videoFile) throws IOException {
         logger.info("Prepare the video to be streamed: {}", videoFile.getFileName());
 
-        if (videoFile.getTranscodedVersionList().isEmpty()) {
-            // Transcode the videofile to different resolutions
-            VideoFile updatedVideo = ffmpegHandler.transcodeVideo(videoFile);
-
-            // Update the cache
-            videoCache.put(videoFile.getFileName(), updatedVideo);
-
-            return updatedVideo;
-        } else {
-            logger.info("The video already has the transcoded versions");
+        if (!videoFile.getTranscodedVersionList().isEmpty()) {
+            logger.info("The video already has {} transcoded versions", videoFile.getTranscodedVersionList().size());
             return videoFile;
         }
+
+        loadExistingTranscodedVersions(videoFile);
+
+        if (!videoFile.getTranscodedVersionList().isEmpty()) {
+            logger.info("Found existing transcoded versions on disk");
+
+            videoCache.put(videoFile.getFileName(), videoFile);
+            return videoFile;
+        }
+
+        logger.info("No existing transcoded versions found, starting transcoding process");
+        VideoFile updatedVideo = ffmpegHandler.transcodeVideo(videoFile);
+
+        videoCache.put(videoFile.getFileName(), updatedVideo);
+
+        return updatedVideo;
     }
 
     /**

@@ -6,6 +6,7 @@ import com.network.NetworkMessage;
 import com.network.enums.MessageType;
 import com.util.FFMPEGHandler;
 import com.util.SpeedTester;
+import javafx.application.Platform;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,6 +14,7 @@ import java.io.*;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -70,13 +72,24 @@ public class StreamingClient {
 
             // Speed test
             logger.info("Performing speed test...");
-            SpeedTester speedTester = new SpeedTester();
-            connectionSpeedMbps = speedTester.measureDownloadSpeed().get();
-            logger.info("Connection speed: {:.2f} Mbps", connectionSpeedMbps);
+            try {
+                // Use the singleton instance to prevent multiple concurrent tests
+                connectionSpeedMbps = SpeedTester.getInstance()
+                        .measureDownloadSpeed()
+                        .get(15, TimeUnit.SECONDS);
+
+                logger.info("Connection speed: {:.2f} Mbps", connectionSpeedMbps);
+            } catch (Exception e) {
+                logger.warn("Speed test failed, using default speed: {}", connectionSpeedMbps);
+                connectionSpeedMbps = 2.0;
+            }
 
             // Connect to server
             socket = new Socket(serverAddress, serverPort);
+
+            // Very Important, to create streams in the correct order
             outputStream = new ObjectOutputStream(socket.getOutputStream());
+            outputStream.flush(); // Flush header
             inputStream = new ObjectInputStream(socket.getInputStream());
             isConnected = true;
 
@@ -282,6 +295,8 @@ public class StreamingClient {
             case SERVER_INFO:
                 String infoMessage = message.getPayloadAs(String.class);
                 logger.info("Information about the serer: {}", infoMessage);
+
+
                 break;
 
             default:

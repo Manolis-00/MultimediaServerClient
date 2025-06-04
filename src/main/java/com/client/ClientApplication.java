@@ -364,12 +364,29 @@ public class ClientApplication extends Application {
      * Terminates the current stream
      */
     private void stopStreaming() {
-        if (client.getIsConnected() && isStreaming) {
-            appendToLog("Terminate streaming...");
-            client.requestStopStreaming();
+        logger.info("Strop Streaming button clicked");
+
+        // Always update the GUI state first, regardless of connection status
+        Platform.runLater(() -> {
             isStreaming = false;
             streamButton.setDisable(false);
             stopButton.setDisable(true);
+            appendToLog("Stopping streaming...");
+        });
+
+        // Try to send the stop message if still connected
+        if (client != null && client.getIsConnected()) {
+            try {
+                logger.info("Sending stop streaming request to server");
+                client.requestStopStreaming();
+                appendToLog("Stop request sent to server");
+            } catch (Exception e) {
+                logger.error("Error sending stop request: {}", e.getMessage());
+                appendToLog("Error sending stop request: " + e.getMessage());
+            }
+        } else {
+            logger.info("Client not connected, only updating local state");
+            appendToLog("Streaming stopped (client not connected)");
         }
     }
 
