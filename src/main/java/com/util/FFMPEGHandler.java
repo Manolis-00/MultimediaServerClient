@@ -29,6 +29,7 @@ public class FFMPEGHandler {
 
     private static final String FFMPEG_COMMAND = "ffmpeg";
     private static final String FFPROBE_COMMAND = "ffprobe";
+    private static final String FFPLAY_COMMAND = "ffplay";
     private static final String TRANSCODED_DIR = "transcoded";
 
     private Process currentProcess;
@@ -133,7 +134,7 @@ public class FFMPEGHandler {
                     logger.info("Successfully processed configuration: {}", config);
                 } catch (Exception e) {
                     logger.error("Failed to process configuration {}: {}", config, e.getMessage(), e);
-                    // Continue with other configurations instead of failing completely
+                    // TODO Continue with other configurations instead of failing completely
                 }
             }
 
@@ -289,7 +290,27 @@ public class FFMPEGHandler {
         command.add("-i");
         command.add(videoPath);
         command.addAll(List.of(config.getFFMPEGParameters()));
-        command.add("udp://127.0.0.1:" + config.getStreamPort());
+
+        // Use transcoding parameters that are optimized for streaming
+        command.add("-c:v");
+        command.add("libx264");  // Force H.264 codec
+        command.add("-preset");
+        command.add("ultrafast");  // Fast encoding for real-time
+        command.add("-tune");
+        command.add("zerolatency");  // Optimize for low latency
+        command.add("-c:a");
+        command.add("aac");
+        command.add("-b:v");
+        command.add(config.getBitrate() + "");
+        command.add("-b:a");
+        command.add("128k");
+        command.add("-vf");
+        command.add("scale=" + config.getVideoWidth() + ":" + config.getVideoHeight());
+        command.add("-f");
+        command.add("mpegts");  // Use MPEG-TS format for streaming
+        command.add("-pkt_size");
+        command.add("1316");  // Optimal packet size for UDP
+        command.add("udp://127.0.0.1:" + config.getStreamPort() + "?pkt_size=1316");
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
@@ -325,7 +346,12 @@ public class FFMPEGHandler {
                 try {
                     exitCode = process.waitFor();
                     logger.info("The transmission is complete with output code: {}", exitCode);
-                    future.complete(null);
+
+                    if (exitCode != 0) {
+                        future.completeExceptionally(new RuntimeException("FFMPEG exited with code: " + exitCode));
+                    } else {
+                        future.complete(null);
+                    }
                 } catch (InterruptedException e) {
                     logger.error("Stop the watching process: {}", e.getMessage());
                     future.completeExceptionally(e);
@@ -352,40 +378,79 @@ public class FFMPEGHandler {
     public CompletableFuture<Void> startPlayback(String serverAddress, StreamConfig config, Consumer<String> outputConsumer) {
         logger.info("Start streaming from {} : {} with configuration: {}", serverAddress, config.getStreamPort(), config);
 
-        // Create the FFMPEG command for streaming
-        List<String> streamCommand = new ArrayList<>();
-        streamCommand.add(FFMPEG_COMMAND);
-        streamCommand.add("udp://" + serverAddress + ":" + config.getStreamPort());
-        streamCommand.add("-c:v");
-        streamCommand.add("copy");
-        streamCommand.add("-c:a");
-        streamCommand.add("copy");
-        streamCommand.add("-f");
-        streamCommand.add("sdl");
-        streamCommand.add("-"); // Exit to the SDL
+        // Create the FFPLAY command for playback
+        List<String> playCommand = new ArrayList<>();
+
+        // First, check if ffplay is available, otherwise use ffmpeg with SDL
+        String playbackCommand = FFPLAY_COMMAND;
+        boolean useFFPlay = isFFPlayAvailable();
+
+        if (useFFPlay) {
+            // Use ffplay for playback (recommended)
+            playCommand.add(FFPLAY_COMMAND);
+            playCommand.add("-i");
+            playCommand.add("udp://" + serverAddress + ":" + config.getStreamPort());
+            playCommand.add("-fflags");
+            playCommand.add("nobuffer");  // Reduce buffering
+            playCommand.add("-flags");
+            playCommand.add("low_delay");  // Low latency mode
+            playCommand.add("-probesize");
+            playCommand.add("32");  // Minimal probe size
+            playCommand.add("-sync");
+            playCommand.add("ext");  // External sync
+            playCommand.add("-vf");
+            playCommand.add("setpts=N/FRAME_RATE/TB");  // Smooth playback
+            playCommand.add("-window_title");
+            playCommand.add("Streaming Video");
+        } else {
+            // Fallback to ffmpeg with SDL output
+            logger.warn("ffplay not found, using ffmpeg with SDL output");
+            playCommand.add(FFMPEG_COMMAND);
+            playCommand.add("-i");
+            playCommand.add("udp://" + serverAddress + ":" + config.getStreamPort());
+            playCommand.add("-fflags");
+            playCommand.add("nobuffer");
+            playCommand.add("-flags");
+            playCommand.add("low_delay");
+            playCommand.add("-probesize");
+            playCommand.add("32");
+            playCommand.add("-vf");
+            playCommand.add("setpts=N/FRAME_RATE/TB");
+            playCommand.add("-f");
+            playCommand.add("sdl");
+            playCommand.add("Streaming Video");
+        }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         try {
-            // Start the FFMPEG process
-            Process process = new ProcessBuilder(streamCommand)
+            logger.info("Starting playback with command: {}", String.join(" ", playCommand));
+
+            // Start the playback process
+            Process process = new ProcessBuilder(playCommand)
                     .redirectErrorStream(true)
                     .start();
 
             currentProcess = process;
 
-            // Create the exit reading thread
+            // Create the output reading thread
             Thread outputThread = new Thread(() -> {
                 try (BufferedReader inputStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String inputStreamLine;
                     while ((inputStreamLine = inputStreamReader.readLine()) != null) {
-                        logger.debug("FFMPEG Player: {}", inputStreamLine);
+                        logger.debug("Player: {}", inputStreamLine);
                         if (outputConsumer != null) {
                             outputConsumer.accept(inputStreamLine);
                         }
+
+                        // Check for common error messages
+                        if (inputStreamLine.toLowerCase().contains("error") ||
+                                inputStreamLine.toLowerCase().contains("failed")) {
+                            logger.error("Playback error detected: {}", inputStreamLine);
+                        }
                     }
                 } catch (IOException e) {
-                    logger.error("Error during reading the exit of the FFMPEG: {}", e.getMessage());
+                    logger.error("Error during reading the output of the player: {}", e.getMessage());
                 }
             });
             outputThread.setDaemon(true);
@@ -395,8 +460,13 @@ public class FFMPEGHandler {
             Thread watcherThread = new Thread(() -> {
                 try {
                     int exitCode = process.waitFor();
-                    logger.info("The streaming was successfully completed with exit code: {}", exitCode);
-                    future.complete(null);
+                    logger.info("The playback was completed with exit code: {}", exitCode);
+
+                    if (exitCode != 0 && exitCode != 255) {  // 255 is normal exit for ffplay when window is closed
+                        future.completeExceptionally(new RuntimeException("Playback exited with code: " + exitCode));
+                    } else {
+                        future.complete(null);
+                    }
                 } catch (InterruptedException e) {
                     logger.error("Error: Stop watching the process: {}", e.getMessage());
                     future.completeExceptionally(e);
@@ -406,11 +476,29 @@ public class FFMPEGHandler {
             watcherThread.start();
 
         } catch (IOException e) {
-            logger.error("Error during the initiation of the streaming: {}", e.getMessage());
+            logger.error("Error during the initiation of the playback: {}", e.getMessage());
             future.completeExceptionally(e);
         }
 
         return future;
+    }
+
+    /**
+     * Checks if ffplay is available on the system
+     * @return true if ffplay is available, false otherwise
+     */
+    private boolean isFFPlayAvailable() {
+        try {
+            Process process = new ProcessBuilder(FFPLAY_COMMAND, "-version")
+                    .redirectErrorStream(true)
+                    .start();
+
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (IOException | InterruptedException e) {
+            logger.debug("ffplay not available: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
