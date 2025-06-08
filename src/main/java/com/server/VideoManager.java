@@ -176,7 +176,7 @@ public class VideoManager {
      * Checks whether a file is a video file supported by the application
      *
      * @param file - The {@link File} to be checked
-     * @return     - True if the file is a supported video file, false otherwise
+     * @return - True if the file is a supported video file, false otherwise
      */
     private boolean isSupportedVideoFile(File file) {
         if (!file.isFile()) {
@@ -197,7 +197,7 @@ public class VideoManager {
      * Finds and returns a {@link VideoFile} based on the {@link File#getName()}
      *
      * @param fileName - The name of the {@link File}
-     * @return         - The {@link VideoFile} if it exists. Null otherwise.
+     * @return - The {@link VideoFile} if it exists. Null otherwise.
      */
     public VideoFile getVideoByFileName(String fileName) {
         return videoCache.get(fileName);
@@ -206,9 +206,9 @@ public class VideoManager {
     /**
      * Prepares a video for streaming, by creating the required versions.
      *
-     * @param videoFile      - The {@link VideoFile} to be prepared for streaming
-     * @return               - The aforementioned {@link VideoFile}
-     * @throws IOException   - If there is an error during the preparation
+     * @param videoFile - The {@link VideoFile} to be prepared for streaming
+     * @return - The aforementioned {@link VideoFile}
+     * @throws IOException - If there is an error during the preparation
      */
     public VideoFile prepareVideoForStreaming(VideoFile videoFile) throws IOException {
         logger.info("Prepare the video to be streamed: {}", videoFile.getFileName());

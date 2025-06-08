@@ -55,7 +55,8 @@ public class ServerApplication {
         var availableVideos = videoManager.loadAvailableVideos();
 
         if (availableVideos.isEmpty()) {
-            logger.warn("No video files were found in the directory {}. Please add video files.", videosDirectory.toAbsolutePath());
+            logger.warn("No video files were found in the directory {}. Please add video files.",
+                    videosDirectory.toAbsolutePath());
             System.out.println("Warning: No video files were found in the directory " + videosDirectory.toAbsolutePath());
             System.out.println("Please add video files.");
         } else {
@@ -127,8 +128,8 @@ public class ServerApplication {
     /**
      * Formats the size of the video file to human-readable form.
      *
-     * @param size  - {@link com.model.VideoFile} size in bytes
-     * @return      - The size in (Kb, Mb, Gb)
+     * @param size - {@link com.model.VideoFile} size in bytes
+     * @return - The size in (Kb, Mb, Gb)
      */
     public static String formatFileSize(long size) {
         if (size < 1024) {

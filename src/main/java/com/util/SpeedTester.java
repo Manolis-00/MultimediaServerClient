@@ -50,7 +50,8 @@ public class SpeedTester {
     /**
      * Private constructor to enforce singleton pattern
      */
-    private SpeedTester() {}
+    private SpeedTester() {
+    }
 
     /**
      * Measures download speed in a thread-safe manner.

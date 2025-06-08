@@ -96,6 +96,7 @@ public class ClientApplication extends Application {
 
     /**
      * Creates the connection panel
+     *
      * @return - Returns the HBox that will hold the connection panel
      */
     private HBox createConnectionPanel() {
@@ -383,6 +384,7 @@ public class ClientApplication extends Application {
 
     /**
      * Adds a message to the log
+     *
      * @param message - the message to be appended
      */
     private void appendToLog(String message) {
@@ -401,6 +403,7 @@ public class ClientApplication extends Application {
 
     /**
      * Updates the state of the connection to the GUI
+     *
      * @param connected - is there a connection or not
      */
     private void updateConnectionStatus(boolean connected) {

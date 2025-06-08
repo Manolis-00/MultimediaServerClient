@@ -189,9 +189,9 @@ public class StreamingServer {
     /**
      * Handles a message from the client
      *
-     * @param message       - The message from the client
-     * @param socket        - The connection socket
-     * @param outputStream  - The outputstream for sending replies
+     * @param message      - The message from the client
+     * @param socket       - The connection socket
+     * @param outputStream - The outputstream for sending replies
      */
     private void handleClientMessage(NetworkMessage message, Socket socket, ObjectOutputStream outputStream) {
         logger.info("Solved message from client: {}", message);
@@ -236,9 +236,9 @@ public class StreamingServer {
     /**
      * Handles video streaming requests
      *
-     * @param message       - The {@link NetworkMessage} that contains the request
-     * @param socket        - The {@link Socket} of the connection
-     * @param outputStream  - The {@link ObjectOutputStream} where the reply will be relayed to.
+     * @param message      - The {@link NetworkMessage} that contains the request
+     * @param socket       - The {@link Socket} of the connection
+     * @param outputStream - The {@link ObjectOutputStream} where the reply will be relayed to.
      */
     private void handleStreamRequest(NetworkMessage message, Socket socket, ObjectOutputStream outputStream) {
         String fileName = message.getPayloadAs(String.class);
@@ -304,7 +304,8 @@ public class StreamingServer {
         }).exceptionally(throwable -> {
             // Runs if transcoding fails
             logger.error("Video preparation failed: {}", throwable.getMessage());
-            sendMessage(outputStream, new NetworkMessage(MessageType.STREAM_ERROR, "Failed to prepare video: " + throwable.getMessage()));
+            sendMessage(outputStream, new NetworkMessage(MessageType.STREAM_ERROR,
+                    "Failed to prepare video: " + throwable.getMessage()));
             return null;
         });
 
@@ -313,6 +314,7 @@ public class StreamingServer {
 
     /**
      * Helper method to handle the actual streaming once video is ready
+     *
      * @param videoFile
      * @param outputStream
      */
@@ -369,6 +371,7 @@ public class StreamingServer {
 
     /**
      * Handles the speed report from the client
+     *
      * @param message
      */
     private void handleConnectionSpeedReport(NetworkMessage message) {

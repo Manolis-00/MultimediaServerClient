@@ -19,8 +19,9 @@ public class NetworkMessage implements Serializable {
 
     /**
      * Constructor for the creation of a {@link NetworkMessage}
-     * @param messageType       The type of the message
-     * @param messagePayload    The contents of the message (MUST be {@link Serializable}
+     *
+     * @param messageType    The type of the message
+     * @param messagePayload The contents of the message (MUST be {@link Serializable}
      */
     public NetworkMessage(MessageType messageType, Object messagePayload) {
         this.messageType = messageType;
@@ -33,6 +34,7 @@ public class NetworkMessage implements Serializable {
 
     /**
      * Returns the {@link MessageType}
+     *
      * @return The type of the message.
      */
     public MessageType getMessageType() {
@@ -50,7 +52,7 @@ public class NetworkMessage implements Serializable {
     public String toString() {
         return "NetworkMessage{" +
                 "type=" + messageType +
-                ", payload=" + (messagePayload != null ? messagePayload.getClass().getSimpleName(): "null") +
+                ", payload=" + (messagePayload != null ? messagePayload.getClass().getSimpleName() : "null") +
                 '}';
     }
 }

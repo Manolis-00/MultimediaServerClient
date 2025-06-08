@@ -35,6 +35,7 @@ public class FFMPEGHandler {
 
     /**
      * Checks that FFMPEG is available to the system.
+     *
      * @return true if FFMPEF is available, false if it is not
      */
     public boolean isFFMPEFGAvailable() {
@@ -54,14 +55,14 @@ public class FFMPEGHandler {
     /**
      * If the directory for the transcoded files, does not exist, it creates it.
      *
-     * @return              The directory's absolute path
+     * @return The directory's absolute path
      * @throws IOException If there is an error during the directory creation process
      */
     private Path ensureTranscodedDirectory() throws IOException {
         Path directory = Paths.get(TRANSCODED_DIR);
         if (!Files.exists(directory)) {
-                Files.createDirectories(directory);
-                logger.info("The directory for the transcoded files has been created: {}", directory.toAbsolutePath());
+            Files.createDirectories(directory);
+            logger.info("The directory for the transcoded files has been created: {}", directory.toAbsolutePath());
         }
         return directory;
     }
@@ -155,7 +156,7 @@ public class FFMPEGHandler {
      * @throws InterruptedException
      */
     private void processVideoConfiguration(VideoFile videoFile, StreamConfig config, Path videoDir)
-        throws IOException, InterruptedException {
+            throws IOException, InterruptedException {
 
         // Generate output filename
         String videoName = videoFile.getFileName().substring(0, videoFile.getFileName().lastIndexOf('.'));
@@ -212,13 +213,14 @@ public class FFMPEGHandler {
 
     /**
      * Helper method to execute FFMPEG command with proper error handling
+     *
      * @param command
      * @param outputFileName
      * @throws IOException
      * @throws InterruptedException
      */
     private void executeFFMPEGCommand(List<String> command, String outputFileName)
-        throws IOException, InterruptedException {
+            throws IOException, InterruptedException {
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);
@@ -357,7 +359,7 @@ public class FFMPEGHandler {
     }
 
     private Thread readOutputThread(Consumer<String> outputConsumer, Process process) {
-        Thread outputThread = new Thread(() ->{
+        Thread outputThread = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -377,6 +379,7 @@ public class FFMPEGHandler {
 
     /**
      * Starts playing a stream from a remote source
+     *
      * @param serverAddress
      * @param config
      * @param outputConsumer
@@ -474,6 +477,7 @@ public class FFMPEGHandler {
 
     /**
      * Checks if ffplay is available on the system
+     *
      * @return true if ffplay is available, false otherwise
      */
     private boolean isFFPlayAvailable() {

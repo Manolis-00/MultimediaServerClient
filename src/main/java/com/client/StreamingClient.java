@@ -44,6 +44,7 @@ public class StreamingClient {
 
     /**
      * {@link StreamingClient} constructor
+     *
      * @param serverAddress - The server address
      * @param serverPort    - The server port
      */
@@ -140,7 +141,7 @@ public class StreamingClient {
                 playbackFuture.cancel(true);
             }
         }
-        
+
         sendMessage(new NetworkMessage(MessageType.REQUEST_STREAM_VIDEO, fileName));
     }
 
@@ -306,6 +307,7 @@ public class StreamingClient {
 
     /**
      * Initiates the video playback
+     *
      * @param config
      */
     private void startPlayback(StreamConfig config) {

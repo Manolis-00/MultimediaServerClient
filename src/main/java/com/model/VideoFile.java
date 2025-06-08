@@ -26,7 +26,7 @@ public class VideoFile implements Serializable {
      * Constructor for the creation of a {@link VideoFile} object,
      * by a {@link File} object.
      *
-     * @param file  The video {@link File}
+     * @param file The video {@link File}
      */
     public VideoFile(File file) {
         this.fileName = file.getName();
@@ -119,11 +119,11 @@ public class VideoFile implements Serializable {
         /**
          * Constructor for the creation of the transcoded video format.
          *
-         * @param transcodedVideoPath       The path of the transcoded file, of the specific format
-         * @param transcodedVideoFormat     The format
-         * @param videoPixelWidth           The width of the video
-         * @param videoPixelHeight          The height of the video
-         * @param bitrate                   The bitrate in bit/second
+         * @param transcodedVideoPath   The path of the transcoded file, of the specific format
+         * @param transcodedVideoFormat The format
+         * @param videoPixelWidth       The width of the video
+         * @param videoPixelHeight      The height of the video
+         * @param bitrate               The bitrate in bit/second
          */
         public TranscodedVersion(String transcodedVideoPath, String transcodedVideoFormat, int videoPixelWidth,
                                  int videoPixelHeight, long bitrate) {
