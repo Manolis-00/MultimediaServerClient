@@ -74,7 +74,8 @@ public class SpeedTester {
                             try {
                                 double speed = performSingleTest(testUrl);
                                 if (speed > 0) {
-                                    logger.info("Speed test completed successfully: {:.2f} Mbps using {}", speed, testUrl);
+                                    logger.info("Speed test completed successfully: {:.2f} Mbps using {}, " +
+                                            "downloading from {}", speed, testUrl);
                                     return speed;
                                 }
                             } catch (Exception e) {
@@ -155,11 +156,11 @@ public class SpeedTester {
             double megabits = (bytesDownloaded * 8.0) / (1024.0 * 1024.0); // Convert bytes to megabits
             double speedMbps = megabits / durationSeconds;
 
-            logger.debug("Downloaded {} bytes in {} ms = {:.2f} Mbps", bytesDownloaded, durationMs, speedMbps);
+            logger.debug("Downloaded {} bytes in {} ms = {} Mbps", bytesDownloaded, durationMs, speedMbps);
 
             // Sanity check - if speed is unreasonably high or low, it's probably wrong
             if (speedMbps < 0.1 || speedMbps > 1000) {
-                logger.warn("Speed test result seems unrealistic: {:.2f} Mbps, ignoring", speedMbps);
+                logger.warn("Speed test result seems unrealistic: {} Mbps, ignoring", speedMbps);
                 return 0;
             }
 
@@ -167,18 +168,6 @@ public class SpeedTester {
 
         } finally {
             connection.disconnect();
-        }
-    }
-
-    /**
-     * Static method for quick speed measurement with proper error handling
-     */
-    public static double quickMeasureDownloadSpeedMbps() {
-        try {
-            return getInstance().measureDownloadSpeed().get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            logger.error("Quick speed test failed: {}", e.getMessage());
-            return DEFAULT_SPEED_MBPS;
         }
     }
 }

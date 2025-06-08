@@ -140,7 +140,7 @@ public class VideoManager {
         );
 
         for (StreamConfig config : configs) {
-            String expectedFileName = String.format("%s_%dp.mp4", videoName, config.getVideoHeight());
+            String expectedFileName = String.format("%s_%dp.mp4", videoName, config.videoHeight());
             Path transcodedFilePath = transcodedDir.resolve(expectedFileName);
 
             if (Files.exists(transcodedFilePath)) {
@@ -152,9 +152,9 @@ public class VideoManager {
                         VideoFile.TranscodedVersion version = new VideoFile.TranscodedVersion(
                                 transcodedFilePath.toString(),
                                 "mp4",
-                                config.getVideoWidth(),
-                                config.getVideoHeight(),
-                                config.getBitrate()
+                                config.videoWidth(),
+                                config.videoHeight(),
+                                config.bitrate()
                         );
                         videoFile.addTranscodedVersion(version);
                     } else {
@@ -233,13 +233,5 @@ public class VideoManager {
         videoCache.put(videoFile.getFileName(), updatedVideo);
 
         return updatedVideo;
-    }
-
-    /**
-     * Returns the {@link FFMPEGHandler}
-     * @return
-     */
-    public FFMPEGHandler getFFMPEGHandler() {
-        return ffmpegHandler;
     }
 }

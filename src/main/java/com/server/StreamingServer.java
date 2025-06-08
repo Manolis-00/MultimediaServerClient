@@ -338,7 +338,7 @@ public class StreamingServer {
             // Stop any previous streaming
             if (streamingFuture != null && !streamingFuture.isDone()) {
                 logger.info("Stopping previous streaming session");
-                ffmpegHandler.stopCurrentProcess();;
+                ffmpegHandler.stopCurrentProcess();
                 streamingFuture.cancel(true);
             }
 

@@ -90,9 +90,8 @@ public class ServerApplication {
                     if (availableVideos.isEmpty()) {
                         System.out.println("There were no video files available");
                     } else {
-                        availableVideos.forEach(videoFile -> {
-                            System.out.println(" - " + videoFile.getFileName() + " (" + formatFileSize(videoFile.getFileSize()) + ")");
-                        });
+                        availableVideos.forEach(videoFile -> System.out.println(" - " + videoFile.getFileName()
+                                + " (" + formatFileSize(videoFile.getFileSize()) + ")"));
                     }
                     break;
 

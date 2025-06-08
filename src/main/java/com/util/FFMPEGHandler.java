@@ -7,7 +7,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -28,7 +27,7 @@ public class FFMPEGHandler {
     private static final Logger logger = LogManager.getLogger(FFMPEGHandler.class); //TODO Make the required changes on the log4j2.xml and to the pom, in order to migrate from log4j ---> slf4j in the project
 
     private static final String FFMPEG_COMMAND = "ffmpeg";
-    private static final String FFPROBE_COMMAND = "ffprobe";
+    //private static final String FFPROBE_COMMAND = "ffprobe";
     private static final String FFPLAY_COMMAND = "ffplay";
     private static final String TRANSCODED_DIR = "transcoded";
 
@@ -110,7 +109,7 @@ public class FFMPEGHandler {
 
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
-                logger.info("Created video directory: {}");
+                logger.info("Created video directory: {}", videoDir);
             } else {
                 logger.info("Video directory already exists: {}", videoDir.toAbsolutePath());
             }
@@ -160,7 +159,7 @@ public class FFMPEGHandler {
 
         // Generate output filename
         String videoName = videoFile.getFileName().substring(0, videoFile.getFileName().lastIndexOf('.'));
-        String outputFileName = String.format("%s_%dp.%s", videoName, config.getVideoHeight(), config.getVideoFormat());
+        String outputFileName = String.format("%s_%dp.%s", videoName, config.videoHeight(), config.videoFormat());
         Path outputPath = videoDir.resolve(outputFileName);
 
         // Check if already exists
@@ -203,10 +202,10 @@ public class FFMPEGHandler {
         // Add the transcoded version to the video file
         VideoFile.TranscodedVersion version = new VideoFile.TranscodedVersion(
                 outputPath.toString(),
-                config.getVideoFormat(),
-                config.getVideoWidth(),
-                config.getVideoHeight(),
-                config.getBitrate()
+                config.videoFormat(),
+                config.videoWidth(),
+                config.videoHeight(),
+                config.bitrate()
         );
         videoFile.addTranscodedVersion(version);
     }
@@ -264,10 +263,10 @@ public class FFMPEGHandler {
     private void addExistingTranscodedVersion(VideoFile videoFile, StreamConfig config, Path outputPath) {
         VideoFile.TranscodedVersion version = new VideoFile.TranscodedVersion(
                 outputPath.toString(),
-                config.getVideoFormat(),
-                config.getVideoWidth(),
-                config.getVideoHeight(),
-                config.getBitrate()
+                config.videoFormat(),
+                config.videoWidth(),
+                config.videoHeight(),
+                config.bitrate()
         );
         videoFile.addTranscodedVersion(version);
     }
@@ -301,16 +300,16 @@ public class FFMPEGHandler {
         command.add("-c:a");
         command.add("aac");
         command.add("-b:v");
-        command.add(config.getBitrate() + "");
+        command.add(config.bitrate() + "");
         command.add("-b:a");
         command.add("128k");
         command.add("-vf");
-        command.add("scale=" + config.getVideoWidth() + ":" + config.getVideoHeight());
+        command.add("scale=" + config.videoWidth() + ":" + config.videoHeight());
         command.add("-f");
         command.add("mpegts");  // Use MPEG-TS format for streaming
         command.add("-pkt_size");
         command.add("1316");  // Optimal packet size for UDP
-        command.add("udp://127.0.0.1:" + config.getStreamPort() + "?pkt_size=1316");
+        command.add("udp://127.0.0.1:" + config.streamPort() + "?pkt_size=1316");
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
@@ -322,42 +321,10 @@ public class FFMPEGHandler {
 
             currentProcess = process;
 
-            // Create a thread to read the output
-            Thread outputThread = new Thread(() ->{
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        logger.debug("FFMPEG Stream: {}", line);
-                        if (outputConsumer != null) {
-                            outputConsumer.accept(line);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("Error during the reading stage of the output of the FFMPEG: {}", e.getMessage());
-                }
-            });
-
-            outputThread.setDaemon(true);
+            Thread outputThread = readOutputThread(outputConsumer, process);
             outputThread.start();
 
-            // Create a Thread for watching the process
-            Thread watcherThread = new Thread(() -> {
-                int exitCode = 0;
-                try {
-                    exitCode = process.waitFor();
-                    logger.info("The transmission is complete with output code: {}", exitCode);
-
-                    if (exitCode != 0) {
-                        future.completeExceptionally(new RuntimeException("FFMPEG exited with code: " + exitCode));
-                    } else {
-                        future.complete(null);
-                    }
-                } catch (InterruptedException e) {
-                    logger.error("Stop the watching process: {}", e.getMessage());
-                    future.completeExceptionally(e);
-                }
-            });
-            watcherThread.setDaemon(true);
+            Thread watcherThread = getWatcherThread(process, future);
             watcherThread.start();
 
         } catch (IOException e) {
@@ -368,6 +335,46 @@ public class FFMPEGHandler {
         return future;
     }
 
+    private static Thread getWatcherThread(Process process, CompletableFuture<Void> future) {
+        Thread watcherThread = new Thread(() -> {
+            int exitCode = 0;
+            try {
+                exitCode = process.waitFor();
+                logger.info("The transmission is complete with output code: {}", exitCode);
+
+                if (exitCode != 0) {
+                    future.completeExceptionally(new RuntimeException("FFMPEG exited with code: " + exitCode));
+                } else {
+                    future.complete(null);
+                }
+            } catch (InterruptedException e) {
+                logger.error("Stop the watching process: {}", e.getMessage());
+                future.completeExceptionally(e);
+            }
+        });
+        watcherThread.setDaemon(true);
+        return watcherThread;
+    }
+
+    private Thread readOutputThread(Consumer<String> outputConsumer, Process process) {
+        Thread outputThread = new Thread(() ->{
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.debug("FFMPEG Stream: {}", line);
+                    if (outputConsumer != null) {
+                        outputConsumer.accept(line);
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("Error during the reading stage of the output of the FFMPEG: {}", e.getMessage());
+            }
+        });
+
+        outputThread.setDaemon(true);
+        return outputThread;
+    }
+
     /**
      * Starts playing a stream from a remote source
      * @param serverAddress
@@ -376,7 +383,7 @@ public class FFMPEGHandler {
      * @return
      */
     public CompletableFuture<Void> startPlayback(String serverAddress, StreamConfig config, Consumer<String> outputConsumer) {
-        logger.info("Start streaming from {} : {} with configuration: {}", serverAddress, config.getStreamPort(), config);
+        logger.info("Start streaming from {} : {} with configuration: {}", serverAddress, config.streamPort(), config);
 
         // Create the FFPLAY command for playback
         List<String> playCommand = new ArrayList<>();
@@ -389,7 +396,7 @@ public class FFMPEGHandler {
             // Use ffplay for playback (recommended)
             playCommand.add(FFPLAY_COMMAND);
             playCommand.add("-i");
-            playCommand.add("udp://" + serverAddress + ":" + config.getStreamPort());
+            playCommand.add("udp://" + serverAddress + ":" + config.streamPort());
             playCommand.add("-fflags");
             playCommand.add("nobuffer");  // Reduce buffering
             playCommand.add("-flags");
@@ -407,7 +414,7 @@ public class FFMPEGHandler {
             logger.warn("ffplay not found, using ffmpeg with SDL output");
             playCommand.add(FFMPEG_COMMAND);
             playCommand.add("-i");
-            playCommand.add("udp://" + serverAddress + ":" + config.getStreamPort());
+            playCommand.add("udp://" + serverAddress + ":" + config.streamPort());
             playCommand.add("-fflags");
             playCommand.add("nobuffer");
             playCommand.add("-flags");
@@ -434,25 +441,7 @@ public class FFMPEGHandler {
             currentProcess = process;
 
             // Create the output reading thread
-            Thread outputThread = new Thread(() -> {
-                try (BufferedReader inputStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String inputStreamLine;
-                    while ((inputStreamLine = inputStreamReader.readLine()) != null) {
-                        logger.debug("Player: {}", inputStreamLine);
-                        if (outputConsumer != null) {
-                            outputConsumer.accept(inputStreamLine);
-                        }
-
-                        // Check for common error messages
-                        if (inputStreamLine.toLowerCase().contains("error") ||
-                                inputStreamLine.toLowerCase().contains("failed")) {
-                            logger.error("Playback error detected: {}", inputStreamLine);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("Error during reading the output of the player: {}", e.getMessage());
-                }
-            });
+            Thread outputThread = readOutputThread(outputConsumer, process);
             outputThread.setDaemon(true);
             outputThread.start();
 

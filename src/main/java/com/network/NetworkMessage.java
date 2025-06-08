@@ -3,6 +3,7 @@ package com.network;
 import com.network.enums.MessageType;
 import com.util.SerialNumbers;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -11,6 +12,7 @@ import java.io.Serializable;
  */
 public class NetworkMessage implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = SerialNumbers.THREE;
     private final MessageType messageType;
     private final Object messagePayload;
@@ -35,14 +37,6 @@ public class NetworkMessage implements Serializable {
      */
     public MessageType getMessageType() {
         return messageType;
-    }
-
-    /**
-     * Returns the contents of the message.
-     * @return The content of the message.
-     */
-    public Object getMessagePayload() {
-        return messagePayload;
     }
 
     public <T> T getPayloadAs(Class<T> clazz) {

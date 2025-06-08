@@ -2,13 +2,20 @@ package com.model;
 
 import com.util.SerialNumbers;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * Class that includes configuration for the video streaming.
  * It is utilized for the communication between Client - Server
+ *
+ * @param videoCodec The video codec (e.g. h264)
+ * @param audioCodec The audio codec (e.g. aac)
+ * @param streamPort The streaming port
  */
-public class StreamConfig implements Serializable {
+public record StreamConfig(int videoWidth, int videoHeight, int bitrate, String videoCodec, String audioCodec,
+                           String videoFormat, Integer streamPort) implements Serializable {
+    @Serial
     private static final long serialVersionUID = SerialNumbers.FOUR;
 
     // Constants for the predefined video resolutions with proper codec and format values
@@ -26,14 +33,6 @@ public class StreamConfig implements Serializable {
 
     // Constant defining the streaming port
     public static final Integer DEFAULT_STREAMING_PORT = 8889;
-
-    private final int videoWidth;
-    private final int videoHeight;
-    private final int bitrate;
-    private final String videoCodec; // The video codec (e.g. h264)
-    private final String audioCodec; // The audio codec (e.g. aac)
-    private final String videoFormat;
-    private final Integer streamPort; // The streaming port
 
     /**
      * Full constructor of the class
@@ -59,22 +58,13 @@ public class StreamConfig implements Serializable {
 
     /**
      * Creates a new configuration with a port that is different than the default
+     *
      * @param newStreamPort
      * @return
      */
     public StreamConfig withStreamPort(Integer newStreamPort) {
         return new StreamConfig(this.videoWidth, this.videoHeight, this.bitrate, this.videoCodec, this.audioCodec,
                 this.videoFormat, newStreamPort);
-    }
-
-    /**
-     * Creates a new configuration with a different format.
-     * @param newVideoFormat
-     * @return
-     */
-    public StreamConfig withFormat(String newVideoFormat) {
-        return new StreamConfig(this.videoWidth, this.videoHeight, this.bitrate, this.videoCodec, this.audioCodec,
-                newVideoFormat, this.streamPort);
     }
 
     /**
@@ -89,13 +79,13 @@ public class StreamConfig implements Serializable {
         double safetyFactor = 0.7;
         long safeBps = (long) (speedBps * safetyFactor);
 
-        if (safeBps >= HD_1080P.getBitrate()) {
+        if (safeBps >= HD_1080P.bitrate()) {
             return HD_1080P.withStreamPort(DEFAULT_STREAMING_PORT);
-        } else if (safeBps >= HD_720P.getBitrate()) {
+        } else if (safeBps >= HD_720P.bitrate()) {
             return HD_720P.withStreamPort(DEFAULT_STREAMING_PORT);
-        } else if (safeBps >= SD_480P.getBitrate()) {
+        } else if (safeBps >= SD_480P.bitrate()) {
             return SD_480P.withStreamPort(DEFAULT_STREAMING_PORT);
-        } else if (safeBps >= SD_360P.getBitrate()) {
+        } else if (safeBps >= SD_360P.bitrate()) {
             return SD_360P.withStreamPort(DEFAULT_STREAMING_PORT);
         } else {
             return LOW_240P.withStreamPort(DEFAULT_STREAMING_PORT);
@@ -103,34 +93,6 @@ public class StreamConfig implements Serializable {
     }
 
     //Getters
-
-    public int getVideoWidth() {
-        return videoWidth;
-    }
-
-    public int getVideoHeight() {
-        return videoHeight;
-    }
-
-    public int getBitrate() {
-        return bitrate;
-    }
-
-    public String getVideoCodec() {
-        return videoCodec;
-    }
-
-    public String getAudioCodec() {
-        return audioCodec;
-    }
-
-    public String getVideoFormat() {
-        return videoFormat;
-    }
-
-    public Integer getStreamPort() {
-        return streamPort;
-    }
 
     public String getResolution() {
         return videoWidth + "x" + videoHeight;
@@ -146,7 +108,7 @@ public class StreamConfig implements Serializable {
     }
 
     public String[] getFFMPEGParameters() {
-        return new String[] {
+        return new String[]{
                 "-c:v", videoCodec,
                 "-c:a", audioCodec,
                 "-b:v", bitrate + "",

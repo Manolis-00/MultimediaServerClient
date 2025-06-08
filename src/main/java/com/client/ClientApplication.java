@@ -33,7 +33,6 @@ public class ClientApplication extends Application {
 
     // GUI fields
     private Stage primaryStage;
-    private VBox mainLayout;
     private ListView<VideoFile> videoFileListView;
     private ObservableList<VideoFile> videoList;
     private TextArea logTextArea;
@@ -52,7 +51,7 @@ public class ClientApplication extends Application {
     }
 
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         primaryStage.setTitle("Streaming Client");
 
@@ -75,7 +74,7 @@ public class ClientApplication extends Application {
      */
     private void createGUI() {
         // Create layout
-        mainLayout = new VBox(10);
+        VBox mainLayout = new VBox(10);
         mainLayout.setPadding(new Insets(10));
         mainLayout.setFillWidth(true);
 
@@ -97,7 +96,7 @@ public class ClientApplication extends Application {
 
     /**
      * Creates the connection panel
-     * @return
+     * @return - Returns the HBox that will hold the connection panel
      */
     private HBox createConnectionPanel() {
         HBox connectionPanel = new HBox(10);
@@ -143,7 +142,7 @@ public class ClientApplication extends Application {
     /**
      * Creates the status panel
      *
-     * @return
+     * @return - Returns the HBox that will hold the connection status
      */
     private HBox createStatusPanel() {
         HBox statusPanel = new HBox(10);
@@ -163,7 +162,7 @@ public class ClientApplication extends Application {
     /**
      * Creates the panel for the video list.
      *
-     * @return
+     * @return - Returns the VBox that will hold the list of the available videos
      */
     private VBox createVideoListPanel() {
         VBox videoListPanel = new VBox(10);
@@ -209,7 +208,7 @@ public class ClientApplication extends Application {
     /**
      * Creates the log panel
      *
-     * @return
+     * @return - Returns the VBox that will hold the logs
      */
     private VBox createLogPanel() {
         VBox logPanel = new VBox(10);
@@ -231,39 +230,33 @@ public class ClientApplication extends Application {
      */
     private void setupClientCallbacks() {
         // Callback for the reception of the video list
-        client.setOnVideoListReceived(videoFiles -> {
-            Platform.runLater(() -> {
-                videoList.clear();
-                videoList.addAll(videoFiles);
-                appendToLog("Received " + videoFiles.size() + " videos from the server");
+        client.setOnVideoListReceived(videoFiles -> Platform.runLater(() -> {
+            videoList.clear();
+            videoList.addAll(videoFiles);
+            appendToLog("Received " + videoFiles.size() + " videos from the server");
 
-                streamButton.setDisable(videoFiles.isEmpty());
-            });
-        });
+            streamButton.setDisable(videoFiles.isEmpty());
+        }));
 
         // Callback for the stream readiness
-        client.setOnStreamReady(config -> {
-            Platform.runLater(() -> {
-                isStreaming = true;
-                streamButton.setDisable(true);
-                stopButton.setDisable(false);
+        client.setOnStreamReady(config -> Platform.runLater(() -> {
+            isStreaming = true;
+            streamButton.setDisable(true);
+            stopButton.setDisable(false);
 
-                appendToLog("Start streaming with resolution " + config.getResolution() + " and bitrate " +
-                        String.format("%.2f Mbps", config.getBitrateMbps()));
-            });
-        });
+            appendToLog("Start streaming with resolution " + config.getResolution() + " and bitrate " +
+                    String.format("%.2f Mbps", config.getBitrateMbps()));
+        }));
 
         // Callback for errors during streaming
-        client.setOnStreamError(error -> {
-            Platform.runLater(() -> {
-                isStreaming = false;
-                streamButton.setDisable(false);
-                stopButton.setDisable(true);
+        client.setOnStreamError(error -> Platform.runLater(() -> {
+            isStreaming = false;
+            streamButton.setDisable(false);
+            stopButton.setDisable(true);
 
-                appendToLog("Error: " + error);
-                showError("Error during streaming: " + error);
-            });
-        });
+            appendToLog("Error: " + error);
+            showError("Error during streaming: " + error);
+        }));
 
         // Callback for the FFMPEG exit
         client.setOnFFMPEGOutput(output -> {
@@ -273,15 +266,13 @@ public class ClientApplication extends Application {
             }
         });
 
-        // Callback for disconect
-        client.setOnDisconnect(() -> {
-            Platform.runLater(() -> {
-                isStreaming = false;
-                updateConnectionStatus(false);
+        // Callback for disconnect
+        client.setOnDisconnect(() -> Platform.runLater(() -> {
+            isStreaming = false;
+            updateConnectionStatus(false);
 
-                appendToLog("Disconnected from the server");
-            });
-        });
+            appendToLog("Disconnected from the server");
+        }));
     }
 
     /**
@@ -392,7 +383,7 @@ public class ClientApplication extends Application {
 
     /**
      * Adds a message to the log
-     * @param message
+     * @param message - the message to be appended
      */
     private void appendToLog(String message) {
         String timestamp = String.format("[%tT] ", LocalTime.now());
@@ -410,7 +401,7 @@ public class ClientApplication extends Application {
 
     /**
      * Updates the state of the connection to the GUI
-     * @param connected
+     * @param connected - is there a connection or not
      */
     private void updateConnectionStatus(boolean connected) {
         statusLabel.setText(connected ? "Connected" : "Disconnected");

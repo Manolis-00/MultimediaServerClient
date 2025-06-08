@@ -14,6 +14,7 @@ import java.util.List;
  */
 public class VideoFile implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = SerialNumbers.ONE;
     private final String fileName;
     private final String filePath;
@@ -47,10 +48,6 @@ public class VideoFile implements Serializable {
 
     public String getFilePath() {
         return filePath;
-    }
-
-    public String getFileExtension() {
-        return fileExtension;
     }
 
     public long getFileSize() {
@@ -142,24 +139,8 @@ public class VideoFile implements Serializable {
             return transcodedVideoPath;
         }
 
-        public String getTranscodedVideoFormat() {
-            return transcodedVideoFormat;
-        }
-
-        public int getVideoPixelWidth() {
-            return videoPixelWidth;
-        }
-
-        public int getVideoPixelHeight() {
-            return videoPixelHeight;
-        }
-
         public long getBitrate() {
             return bitrate;
-        }
-
-        public String getResolution() {
-            return videoPixelWidth + "x" + videoPixelHeight;
         }
 
         @Override

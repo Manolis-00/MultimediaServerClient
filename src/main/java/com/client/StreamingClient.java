@@ -6,7 +6,6 @@ import com.network.NetworkMessage;
 import com.network.enums.MessageType;
 import com.util.FFMPEGHandler;
 import com.util.SpeedTester;
-import javafx.application.Platform;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -262,7 +261,7 @@ public class StreamingClient {
         switch (message.getMessageType()) {
             case VIDEO_LIST_RESPONSE:
                 // Reception of the video list
-                List<VideoFile> videosList = message.getPayloadAs(List.class);
+                List videosList = message.getPayloadAs(List.class);
                 logger.info("A video list with received with a size of {}", videosList != null
                         ? videosList.size() : 0);
                 if (onVideoListReceived != null && videosList != null) {
@@ -310,7 +309,7 @@ public class StreamingClient {
      * @param config
      */
     private void startPlayback(StreamConfig config) {
-        logger.info("Start streaming from {}:{}", serverAddress, config.getStreamPort());
+        logger.info("Start streaming from {}:{}", serverAddress, config.streamPort());
 
         // Start streaming with FFMPEG
         playbackFuture = ffmpegHandler.startPlayback(serverAddress, config, line -> {
