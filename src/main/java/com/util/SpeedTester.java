@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 public class SpeedTester {
     private static final Logger logger = LogManager.getLogger(SpeedTester.class);
 
-    // Simple, reliable test URLs with small files
     private static final String[] TEST_URLS = {
             "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
             "https://httpbin.org/bytes/1048576", // 1MB from httpbin

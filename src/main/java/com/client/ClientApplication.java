@@ -141,7 +141,7 @@ public class ClientApplication extends Application {
     }
 
     /**
-     * Creates the status panel
+     * Creates the connection status panel
      *
      * @return - Returns the HBox that will hold the connection status
      */

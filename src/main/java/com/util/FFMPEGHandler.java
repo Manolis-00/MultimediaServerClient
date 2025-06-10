@@ -27,7 +27,6 @@ public class FFMPEGHandler {
     private static final Logger logger = LogManager.getLogger(FFMPEGHandler.class); //TODO Make the required changes on the log4j2.xml and to the pom, in order to migrate from log4j ---> slf4j in the project
 
     private static final String FFMPEG_COMMAND = "ffmpeg";
-    //private static final String FFPROBE_COMMAND = "ffprobe";
     private static final String FFPLAY_COMMAND = "ffplay";
     private static final String TRANSCODED_DIR = "transcoded";
 
@@ -36,7 +35,7 @@ public class FFMPEGHandler {
     /**
      * Checks that FFMPEG is available to the system.
      *
-     * @return true if FFMPEF is available, false if it is not
+     * @return true if FFMPEG is available, false if it is not
      */
     public boolean isFFMPEFGAvailable() {
         try {
@@ -66,8 +65,6 @@ public class FFMPEGHandler {
         }
         return directory;
     }
-
-    // TODO the method will be heavily refactored
 
     /**
      * Transcodes a video to different resolutions and formats
@@ -396,8 +393,8 @@ public class FFMPEGHandler {
         boolean useFFPlay = isFFPlayAvailable();
 
         if (useFFPlay) {
-            // Use ffplay for playback (recommended)
-            playCommand.add(FFPLAY_COMMAND);
+            // Use ffplay for playback
+            playCommand.add(playbackCommand);
             playCommand.add("-i");
             playCommand.add("udp://" + serverAddress + ":" + config.streamPort());
             playCommand.add("-fflags");

@@ -119,6 +119,10 @@ public class VideoManager {
         }
     }
 
+    /**
+     * This method checks the transcoded directory for the existence of transcoded videos
+     * @param videoFile
+     */
     private void loadExistingTranscodedVersions(VideoFile videoFile) {
         String videoName = videoFile.getFileName().substring(0, videoFile.getFileName().lastIndexOf('.'));
         Path transcodedDir = Paths.get("transcoded", videoName);

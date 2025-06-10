@@ -141,7 +141,6 @@ public class StreamingClient {
                 playbackFuture.cancel(true);
             }
         }
-
         sendMessage(new NetworkMessage(MessageType.REQUEST_STREAM_VIDEO, fileName));
     }
 

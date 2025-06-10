@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class that represents a {@link VideoFile} and its data.
+ * Class that represents a {@link VideoFile} and its data. It is a Java representation of the videos.
  * The class implements {@link Serializable} in order to be transmitted through network.
  */
 public class VideoFile implements Serializable {

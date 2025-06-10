@@ -53,6 +53,9 @@ public class StreamingServer {
         this.isRunning = false;
     }
 
+    /**
+     * Start the server
+     */
     public void start() {
         if (isRunning) {
             logger.warn("The server is already running");
